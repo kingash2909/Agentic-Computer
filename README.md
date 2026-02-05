@@ -9,20 +9,19 @@
 - 📁 **File Operations** - Find files, screenshots, disk space
 - 🌐 **Browser Control** - Open URLs, Google/YouTube search
 - 🤖 **AI-Powered** - Natural language understanding via Groq
+- 📸 **Persistent Screenshots** - All screenshots are stored in the local `screenshots/` folder.
 
 ## Quick Start
 
-### 1. Set up API Keys
+### 1. Set up Environment Variables
 
-Edit `config.py` with your credentials:
+Create a `.env` file (based on `.env.example`) with your credentials:
 
-```python
-# Get from https://console.groq.com/keys
-GROQ_API_KEY = "your-groq-api-key"
-
-# Get from https://developers.facebook.com/
-WA_TOKEN = "your-whatsapp-token"
-PHONE_NUMBER_ID = "your-phone-number-id"
+```bash
+WA_TOKEN=your-whatsapp-token
+PHONE_NUMBER_ID=your-phone-number-id
+VERIFY_TOKEN=your-secret-verify-token
+GROQ_API_KEY=your-groq-api-key
 ```
 
 ### 2. Install Dependencies
@@ -32,93 +31,71 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Run the Server
+### 3. Run the Server (The Hub)
 
 ```bash
-python app.py
+python server/run_server.py
 ```
 
-### 4. Expose with ngrok
+### 4. Run the Agent (The Client)
 
+You can run either the CLI version or the GUI version:
+
+**CLI:**
 ```bash
-ngrok http 5002
+python agent/run_agent.py
 ```
 
-Copy the ngrok URL and add `/webhook` to your Meta WhatsApp webhook settings.
+**GUI:**
+```bash
+python agent/gui_app.py
+```
 
-## Sample Commands
-
-# 🤖 Agentic Computer - Supported Commands
+### 5. Go Live (Webhook)
 
 Your bot is now fully cross-platform (**macOS & Windows**) and supports complete remote control via WhatsApp.
 
-## 🖥️ System Control
-| Command | Description | Platform |
-| :--- | :--- | :--- |
-| `shutdown` | Power off the computer | Both |
-| `restart` | Reboot the computer | Both |
-| `sleep` | Put computer to sleep | Both |
-| `lock screen` | Lock the computer | Both |
-| `volume [0-100]` | Set system volume | Both |
-| `mute` / `unmute` | Toggle audio | Both |
-| `battery` | Check power status | Both |
-| `system status` | Detailed CPU, RAM, and Uptime | Both |
-| `clipboard` | Get current copied text | Both |
-| `brightness [0-100]` | Set screen brightness | Both |
+#### Remote Command Guide
+| Command Category | Examples |
+| :--- | :--- |
+| **System** | `battery`, `volume 50`, `brightness 70`, `lock`, `restart` |
+| **Apps** | `open chrome`, `close spotify`, `list apps` |
+| **Files** | `screenshot`, `find report.pdf`, `disk space` |
+| **Browser** | `google weather`, `open youtube.com`, `search youtube` |
+| **Remote Control** | `live`, `click at 500 400`, `type hello`, `press enter` |
 
-## �️ Remote Access (Pseudo-VNC)
-| Command | Description | Example |
-| :--- | :--- | :--- |
-| `live` / `show view` | Get an instant screenshot | "show me what's happening" |
-| `click at [x] [y]`| Click at coordinates | "click at 500 400" |
-| `type [text]` | Type text on your computer | "type hello world" |
-| `press [key]` | Press a specific key | "press enter", "press esc" |
-| `run [command]` | Execute terminal/shell command | "run ls -la on desktop" |
-| `screen info` | Get resolution and mouse position | "where is my mouse" |
+#### Deployment Options
 
-## 📂 File Management
-| Command | Description | Note |
-| :--- | :--- | :--- |
-| `screenshot` | Capture current screen | Standard capture |
-| `find [file]` | Search for a file | Spotlight (Mac) / Dir (Win) |
-| `get [path]` | Fetch a file to WhatsApp | Limit: 10MB |
-| `list [folder]` | View folder contents | e.g. "list downloads" |
-| `disk space` | Check storage usage | Both |
+**Local Testing (ngrok):**
+1. Run `ngrok http 5002`
+2. Copy the `https` URL (e.g., `https://xyz.ngrok-free.app`)
+3. Set your WhatsApp Webhook URL to `https://xyz.ngrok-free.app/webhook` in the Meta Developer Dashboard.
 
-## 📱 Applications
-| Command | Description | Example |
-| :--- | :--- | :--- |
-| `open [app]` | Launch an application | "open chrome", "open notepad" |
-| `close [app]` | Quit an app gracefully | "close spotify" |
-| `kill [app]` | Force quit an app | "kill chrome" |
-| `list apps` | See all active GUI apps | Both |
-| `current app` | Get the active foreground app | Both |
+**Cloud Deployment:**
 
-## 🌐 Browser & Media
-*   **Web**: `open youtube.com`, `google weather`, `search youtube for music`.
-*   **Media**: `play`, `pause`, `next song`, `previous track`, `now playing`.
-
----
-> [!TIP]
-> Use **"run [shell command]"** for powerful remote administration.
-> Use **"live"** followed by **"click"** to navigate your computer visually!
+- **Railway.app (Easiest)**:
+  1. Connect your GitHub Repo.
+  2. Railway will automatically detect the `Procfile` or `Dockerfile`.
+  3. Add your variables in the "Variables" tab.
+- **Render.com**:
+  1. New -> Web Service -> Connect GitHub Repo.
+  2. Set "Start Command" to `gunicorn --worker-class eventlet -w 1 -b 0.0.0.0:$PORT server.run_server:app`.
+- **DigitalOcean / AWS / GCP**:
+  1. Use the [Dockerfile](file:///Users/ashishmishra/Desktop/Building%20Projects/Agentic%20Computer%20/Dockerfile) to build and deploy a container.
 
 ## Project Structure
 
 ```
 Agentic Computer/
-├── app.py              # Main Flask server
-├── config.py           # API keys and settings
-├── requirements.txt    # Dependencies
-├── controllers/
-│   ├── system_controller.py   # System commands
-│   ├── app_controller.py      # App management
-│   ├── file_controller.py     # File operations
-│   └── browser_controller.py  # Browser control
-├── ai/
-│   └── intent_parser.py       # Groq AI command parser
-└── utils/
-    └── whatsapp.py            # WhatsApp messaging
+├── agent/               # Client-side logic
+│   ├── run_agent.py     # CLI Agent entry
+│   ├── gui_app.py       # GUI Agent entry
+│   └── core/            # Functional controllers
+├── server/              # Server-side logic (The Hub)
+│   ├── run_server.py    # Server entry point
+│   └── app/             # Services (AI, WhatsApp)
+├── screenshots/         # Persistent storage for captures
+└── config.py            # Configuration loader
 ```
 
 ## Security Note

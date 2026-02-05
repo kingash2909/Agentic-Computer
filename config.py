@@ -6,13 +6,13 @@ import os
 
 # WhatsApp Cloud API Configuration
 # Get these from Meta Developer Dashboard: https://developers.facebook.com/
-WA_TOKEN = os.getenv("WA_TOKEN", "your_token_here")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "your_phone_id_here")
-VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "your_verify_token")  # You create this - must match in Meta Dashboard
+WA_TOKEN = "EAAUc1ZAMNxRsBQmdfqHqjxYvWlBpEbUh0IoQo36A9htCDBUXLumQJ23k8364Ye4Ixu4YImjJa9vGZCZC5ZB11bkstVJosnGWEpLZCVp51ST5aIgK56eTZCCFTB0ukNL34sckjc9ZBHorOUgJAP3JqZCctGZB6k43BVMAis8ZC0Rbdx2mNHQLl4rmsLQLpByd4SdEeIFwZDZD"
+PHONE_NUMBER_ID = "1006508572537202"
+VERIFY_TOKEN = "my_secret_verify_token"  # You create this - must match in Meta Dashboard
 
 # Groq AI Configuration (Fast & Free!)
 # Get from: https://console.groq.com/keys
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "your_groq_key_here")
+GROQ_API_KEY = "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"
 GROQ_MODEL = "llama-3.3-70b-versatile"  # Fast and powerful
 
 # Server Configuration

@@ -113,5 +113,7 @@ venv.bak/
 # Project specific
 config.py
 !config.py
+config copy.py
+!config copy.py
 # (Keeping config.py for now as it seems to contain necessary keys, 
 # but user should ideally use .env)

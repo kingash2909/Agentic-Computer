@@ -1,46 +1,54 @@
-# Supported Commands
+# 🤖 Agentic Computer - Supported Commands
 
-Here is a list of all commands your bot supports, categorized by function.
+Your bot is now fully cross-platform (**macOS & Windows**) and supports complete remote control via WhatsApp.
 
-## 🖥️ System
-- **Shutdown**: `shutdown` (Power off computer)
-- **Restart**: `restart` (Reboot computer)
-- **Sleep**: `sleep` (Put computer to sleep)
-- **Lock**: `lock`, `lock screen` (Lock the screen)
-- **Volume**: `volume 50`, `volume up`, `volume down` (Set volume level)
-- **Mute**: `mute` (Mute audio)
-- **Unmute**: `unmute` (Unmute audio)
-- **Battery**: `battery`, `power status` (Check battery level)
-- **Info**: `system info`, `cpu usage` (Get system specs)
-- **Brightness**: `brightness 70` (Set screen brightness)
+## 🖥️ System Control
+| Command | Description | Platform |
+| :--- | :--- | :--- |
+| `shutdown` | Power off the computer | Both |
+| `restart` | Reboot the computer | Both |
+| `sleep` | Put computer to sleep | Both |
+| `lock screen` | Lock the computer | Both |
+| `volume [0-100]` | Set system volume | Both |
+| `mute` / `unmute` | Toggle audio | Both |
+| `battery` | Check power status | Both |
+| `system status` | Detailed CPU, RAM, and Uptime | Both |
+| `clipboard` | Get current copied text | Both |
+| `brightness [0-100]` | Set screen brightness | Both |
+
+## �️ Remote Access (Pseudo-VNC)
+| Command | Description | Example |
+| :--- | :--- | :--- |
+| `live` / `show view` | Get an instant screenshot | "show me what's happening" |
+| `click at [x] [y]`| Click at coordinates | "click at 500 400" |
+| `type [text]` | Type text on your computer | "type hello world" |
+| `press [key]` | Press a specific key | "press enter", "press esc" |
+| `run [command]` | Execute terminal/shell command | "run ls -la on desktop" |
+| `screen info` | Get resolution and mouse position | "where is my mouse" |
+
+## 📂 File Management
+| Command | Description | Note |
+| :--- | :--- | :--- |
+| `screenshot` | Capture current screen | Standard capture |
+| `find [file]` | Search for a file | Spotlight (Mac) / Dir (Win) |
+| `get [path]` | Fetch a file to WhatsApp | Limit: 10MB |
+| `list [folder]` | View folder contents | e.g. "list downloads" |
+| `disk space` | Check storage usage | Both |
 
 ## 📱 Applications
-- **Open App**: `open chrome`, `open spotify` (Launch an app)
-- **Close App**: `close chrome`, `close spotify` (Quit an app)
-- **List Apps**: `list apps`, `what's running` (See active apps)
-- **Switch App**: `switch to safari` (Bring app to front)
-- **Kill App**: `kill chrome` (Force quit an app)
-- **Current App**: `current app`, `what am i doing` (Get active app name)
+| Command | Description | Example |
+| :--- | :--- | :--- |
+| `open [app]` | Launch an application | "open chrome", "open notepad" |
+| `close [app]` | Quit an app gracefully | "close spotify" |
+| `kill [app]` | Force quit an app | "kill chrome" |
+| `list apps` | See all active GUI apps | Both |
+| `current app` | Get the active foreground app | Both |
 
-## 📂 Files
-- **Screenshot**: `screenshot`, `take a pic` (Capture screen)
-- **Find File**: `find resume.pdf` (Search for a file)
-- **List Directory**: `list downloads`, `list documents` (View folder contents)
-- **Disk Space**: `disk space`, `storage` (Check free space)
-- **Downloads**: `show downloads` (List recent downloads)
+## 🌐 Browser & Media
+*   **Web**: `open youtube.com`, `google weather`, `search youtube for music`.
+*   **Media**: `play`, `pause`, `next song`, `previous track`, `now playing`.
 
-## 🌐 Browser
-- **Open URL**: `open youtube.com`, `visit google.com`
-- **Search Google**: `search google for weather`, `google weather`
-- **Search YouTube**: `search youtube for cooking`
-- **Shortcuts**: `open youtube`, `open gmail`, `open meet`, `open github`
-- **Control**: `close browser`, `new tab`
-
-## 🎵 Media
-- **Play/Pause**: `play`, `pause`, `play music`
-- **Next Track**: `next song`, `skip`
-- **Previous Track**: `prev song`, `previous`
-- **Now Playing**: `what song is this`, `now playing`
-
-## 🗣️ Chat
-- **Conversational**: Anything else (e.g., "Hello", "Tell me a joke")
+---
+> [!TIP]
+> Use **"run [shell command]"** for powerful remote administration.
+> Use **"live"** followed by **"click"** to navigate your computer visually!

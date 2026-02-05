@@ -7,26 +7,24 @@ import os
 import random
 import string
 
-# Add parent dir to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add root dir to sys.path
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
+
+# Import services from server.app.services
+from server.app.services.whatsapp import send_message, download_media, send_image
+from server.app.services.ai.intent_parser import parse_intent, get_chat_response
+from server.app.services.ai.audio import transcribe_audio
 
 from flask import Flask, request, render_template_string
 from flask_socketio import SocketIO, emit, join_room
 import config
 
-# Import utils (Ensure utils are in python path or moved)
-try:
-    from utils.whatsapp import send_message, download_media
-    from ai.intent_parser import parse_intent, get_chat_response
-    from ai.audio import transcribe_audio
-except ImportError:
-    # Handle the case where we might run this from root
-    from agentic_computer.utils.whatsapp import send_message, download_media
-    # Note: imports might need adjustment based on final structure
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Increase buffer size to 10MB to handle large screenshots
+socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=10000000)
 
 # In-memory stores
 # PAIRING_CODES: { "1234": "phone_number" } - Temporary codes waiting for agent
@@ -99,7 +97,20 @@ def handle_register(data):
         del PAIRING_CODES[code]
         
         emit('registration_success', {'status': 'ok'})
-        send_message(found_phone, "✅ Your computer is now connected and ready to control!")
+        
+        welcome_msg = (
+            "🤖 *Welcome to Nexus Agent!* 🤖\n\n"
+            "✅ Your computer is now connected and ready to control.\n\n"
+            "📱 *Available Commands:*\n"
+            "• *System*: battery, info, volume [0-100], brightness [0-100], lock, sleep, restart, shutdown, clipboard\n"
+            "• *Apps*: open [name], close [name], list, switch [name], current\n"
+            "• *Files*: find [name], screenshot, disk space, downloads\n"
+            "• *Browser*: open [url], search [query], youtube, gmail, meet, github\n"
+            "• *Input*: click [x y], type [text], press [key], live\n"
+            "• *Media*: play, next, prev, now playing\n\n"
+            "💡 _Try saying 'screenshot' or 'what is my battery?'_"
+        )
+        send_message(found_phone, welcome_msg)
     else:
         print(f"❌ Invalid pairing code: {code}")
         emit('registration_failed', {'reason': 'Invalid code'})

@@ -3,3 +3,9 @@ groq
 requests
 psutil
 pillow
+screen-brightness-control
+websocket-client
+eventlet
+pyautogui
+pyperclip
+customtkinter

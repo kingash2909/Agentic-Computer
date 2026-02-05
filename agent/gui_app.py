@@ -7,7 +7,7 @@ import os
 # Add parent to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent import AgentClient
+from agent.run_agent import AgentClient
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")

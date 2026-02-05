@@ -1,3 +1,5 @@
+import eventlet
+eventlet.monkey_patch()
 
 import sys
 import os
@@ -6,10 +8,12 @@ import base64
 import threading
 import time
 
-# Add parent directory to path to access controllers
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add root dir to sys.path
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
 
-from controllers import system_controller, app_controller, file_controller, browser_controller, media_controller
+from agent.core.controllers import system_controller, app_controller, file_controller, browser_controller, media_controller, shell_controller, input_controller
 
 class AgentClient:
     def __init__(self, server_url, on_log=None, on_status_change=None):
@@ -96,52 +100,93 @@ class AgentClient:
                 elif command == "battery": result = system_controller.get_battery()
                 elif command == "info": result = system_controller.get_system_info()
                 elif command == "brightness": result = system_controller.set_brightness(params.get("level", 50))
+                elif command == "clipboard": result = system_controller.get_clipboard()
                 elif command == "screenshot": 
                     path = file_controller.take_screenshot()
-                    if path: 
+                    if path and not path.startswith("❌"): 
                         try:
                             with open(path, "rb") as image_file:
                                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
                             result = "Screenshot captured"
                             self.sio.emit('command_result', {'output': result, 'image_data': encoded_string})
-                            try: os.remove(path)
-                            except: pass
                             return 
                         except Exception as e:
                             result = f"Failed to process screenshot: {e}"
-                    else: result = "Failed to take screenshot"
+                    else: result = f"Failed to take screenshot: {path if path else 'Unknown error'}"
                 elif command == "connect": return 
             
             # --- APP COMMANDS ---
             elif action == "app":
                 if command == "open": result = app_controller.open_app(params.get("app_name", ""))
                 elif command == "close": result = app_controller.close_app(params.get("app_name", ""))
-                elif command == "list": result = app_controller.list_running_apps()
+                elif command in ["list", "list_apps", "running_apps"]: result = app_controller.list_running_apps()
                 elif command == "switch": result = app_controller.switch_to_app(params.get("app_name", ""))
                 elif command == "kill": result = app_controller.kill_app(params.get("app_name", ""))
-                elif command == "current": result = app_controller.get_frontmost_app()
+                elif command in ["current", "current_app"]: result = app_controller.get_frontmost_app()
             
             # --- FILE COMMANDS ---
             elif action == "file":
                 if command == "screenshot": 
                     path = file_controller.take_screenshot()
-                    if path: 
+                    if path and not path.startswith("❌"): 
                         try:
                             with open(path, "rb") as image_file:
                                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
                             result = "Screenshot captured"
                             self.sio.emit('command_result', {'output': result, 'image_data': encoded_string})
-                            try: os.remove(path)
-                            except: pass
                             return 
                         except Exception as e:
                             result = f"Failed to process screenshot: {e}"
-                    else: result = "Failed to take screenshot"
+                    else: result = f"Failed to take screenshot: {path if path else 'Unknown error'}"
                 elif command == "find": result = file_controller.find_file(params.get("filename", ""))
+                elif command == "search": result = file_controller.find_file(params.get("query", ""))
                 elif command == "list": result = file_controller.list_directory(params.get("path"))
                 elif command == "disk": result = file_controller.get_disk_space()
                 elif command == "downloads": result = file_controller.get_downloads()
+                elif command == "get": 
+                    path = file_controller.get_file(params.get("path", ""))
+                    if path and not path.startswith("❌"):
+                        try:
+                            with open(path, "rb") as f:
+                                encoded_string = base64.b64encode(f.read()).decode('utf-8')
+                            result = f"File {os.path.basename(path)} fetched"
+                            self.sio.emit('command_result', {'output': result, 'image_data': encoded_string}) # Server treats image_data as generic media if needed
+                            return 
+                        except Exception as e:
+                            result = f"Failed to fetch file: {e}"
+                    else: result = f"Failed: {path}"
+
+            # --- SHELL COMMANDS ---
+            elif action == "shell":
+                if command == "execute": result = shell_controller.execute_command(params.get("command", ""))
     
+            # --- INPUT COMMANDS (REMOTE ACCESS) ---
+            elif action == "input":
+                if command == "click":
+                    result = input_controller.click(x=params.get("x"), y=params.get("y"), button=params.get("button", "left"))
+                elif command == "type":
+                    result = input_controller.type_text(params.get("text", ""))
+                elif command == "press":
+                    result = input_controller.press_key(params.get("key", ""))
+                elif command == "hotkey":
+                    result = input_controller.hotkey(*params.get("keys", []))
+                elif command == "move":
+                    result = input_controller.move_to(params.get("x", 0), params.get("y", 0))
+                elif command == "info":
+                    result = input_controller.get_screen_info()
+                elif command == "live":
+                    # Take screenshot and return it
+                    path = file_controller.take_screenshot()
+                    if path and not path.startswith("❌"):
+                        try:
+                            with open(path, "rb") as image_file:
+                                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                            result = "Updated view"
+                            self.sio.emit('command_result', {'output': result, 'image_data': encoded_string})
+                            return 
+                        except: result = "Failed to process view"
+                    else: result = "Failed to capture view"
+
             # --- BROWSER COMMANDS ---
             elif action == "browser":
                 if command == "open_url": result = browser_controller.open_url(params.get("url", ""))

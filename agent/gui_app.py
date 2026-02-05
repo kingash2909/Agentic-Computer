@@ -21,7 +21,10 @@ class AgentGUI(ctk.CTk):
         
         # Grid layout
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(3, weight=1)
+
+        # Config Path
+        self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".server_url")
 
         # Header
         self.header_frame = ctk.CTkFrame(self)
@@ -42,7 +45,7 @@ class AgentGUI(ctk.CTk):
         
         self.url_entry = ctk.CTkEntry(self.connect_frame, width=250)
         self.url_entry.grid(row=0, column=1, padx=10, pady=10)
-        self.url_entry.insert(0, "http://localhost:5002")
+        self.url_entry.insert(0, self.load_server_url())
         
         self.code_label = ctk.CTkLabel(self.connect_frame, text="Pairing Code:")
         self.code_label.grid(row=1, column=0, padx=10, pady=10)
@@ -53,9 +56,21 @@ class AgentGUI(ctk.CTk):
         self.connect_btn = ctk.CTkButton(self.connect_frame, text="Connect", command=self.start_connection)
         self.connect_btn.grid(row=2, column=0, columnspan=2, padx=10, pady=20)
 
+        # Instructions Frame
+        self.instr_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.instr_frame.grid(row=2, column=0, padx=20, pady=5, sticky="ew")
+        
+        self.instr_label = ctk.CTkLabel(
+            self.instr_frame, 
+            text="💡 Note: Enter your Render URL above (e.g. https://your-app.onrender.com)\nThen enter the code from WhatsApp.",
+            font=ctk.CTkFont(size=11),
+            text_color="gray"
+        )
+        self.instr_label.pack()
+
         # Log Frame
         self.log_textbox = ctk.CTkTextbox(self, width=500, height=200)
-        self.log_textbox.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+        self.log_textbox.grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
         self.log_textbox.insert("0.0", "--- Logs will appear here ---\n")
         self.log_textbox.configure(state="disabled")
 
@@ -67,6 +82,20 @@ class AgentGUI(ctk.CTk):
         self.log_textbox.insert("end", f"{message}\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
+
+    def load_server_url(self):
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r") as f:
+                    return f.read().strip()
+            except: pass
+        return "http://localhost:5002"
+
+    def save_server_url(self, url):
+        try:
+            with open(self.config_path, "w") as f:
+                f.write(url)
+        except: pass
 
     def update_status(self, status):
         if status == "connected":
@@ -86,6 +115,7 @@ class AgentGUI(ctk.CTk):
             self.log("⚠️ Please enter a pairing code.")
             return
 
+        self.save_server_url(url)
         self.connect_btn.configure(state="disabled", text="Connecting...")
         
         # Initialize Client

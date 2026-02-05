@@ -221,14 +221,32 @@ class AgentClient:
 
 
 def main():
-    print("🤖 Nexus Agent")
+    print("🤖 Nexus Agent (CLI)")
     print("-------------------------")
     
-    SERVER_URL = "http://localhost:5002"
-    print(f"Target Server: {SERVER_URL}")
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".server_url")
+    default_url = "http://localhost:5002"
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                default_url = f.read().strip()
+        except: pass
+
+    print(f"Default Server: {default_url}")
+    server_url = input(f"Enter Server URL (press Enter for default): ").strip()
+    if not server_url:
+        server_url = default_url
+    
+    # Save URL
+    try:
+        with open(config_path, "w") as f:
+            f.write(server_url)
+    except: pass
+
     code = input("Enter Pairing Code (from WhatsApp): ")
     
-    client = AgentClient(SERVER_URL)
+    client = AgentClient(server_url)
     client.connect(code)
     
     # Keep alive for CLI

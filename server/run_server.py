@@ -39,15 +39,49 @@ CONVERSATIONS = {}
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html>
-<head><title>Nexus Control Center</title></head>
-<body style="font-family: sans-serif; padding: 20px;">
-    <h1>🖥️ Nexus Control Center</h1>
-    <h3>Connected Devices: {{ devices_count }}</h3>
-    <ul>
-    {% for phone, sid in devices.items() %}
-        <li>📱 {{ phone }} -> 🔌 {{ sid }}</li>
-    {% endfor %}
-    </ul>
+<head>
+    <title>Nexus Control Center</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .status-card { background: #e8f4fd; border-left: 5px solid #3498db; padding: 15px; margin-top: 20px; border-radius: 4px; }
+        .instructions { background: #fff3e0; border-left: 5px solid #ff9800; padding: 15px; margin-top: 20px; border-radius: 4px; }
+        code { background: #eee; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ Nexus Control Center</h1>
+        
+        <div class="status-card">
+            <h3>Connected Devices: {{ devices_count }}</h3>
+            {% if devices %}
+                <ul>
+                {% for phone, sid in devices.items() %}
+                    <li>📱 <strong>{{ phone }}</strong> is connected (ID: <code>{{ sid[:8] }}...</code>)</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>No devices currently connected.</p>
+            {% endif %}
+        </div>
+
+        <div class="instructions">
+            <h3>🚀 How to Connect Your Laptop</h3>
+            <p>Render hosts the "Brain", but you must run the "Agent" locally on the laptop you want to control:</p>
+            <ol>
+                <li>Open a terminal on your <strong>laptop</strong>.</li>
+                <li>Navigate to the project folder.</li>
+                <li>Run <code>python agent/gui_app.py</code>.</li>
+                <li>Enter this Server URL: <code>{{ request.url_root }}</code></li>
+                <li>Send <strong>"Connect"</strong> to your WhatsApp bot to get a pairing code.</li>
+            </ol>
+        </div>
+    </div>
 </body>
 </html>
 """
@@ -206,7 +240,14 @@ def webhook():
                 if "connect" in user_text.lower():
                     code = generate_pairing_code()
                     PAIRING_CODES[code] = phone_no
-                    reply = f"🔗 To connect your computer:\n1. Run the agent script.\n2. Enter this code: *{code}*"
+                    reply = (
+                        "🔗 *Connection Requested!*\n\n"
+                        "To control this computer, follows these steps on your laptop:\n\n"
+                        "1️⃣ Run the Agent: `python agent/gui_app.py`\n"
+                        "2️⃣ Enter this pairing code: *{}*\n"
+                        "3️⃣ Make sure the Server URL is set to your Render URL.\n\n"
+                        "⌛ This code will expire soon."
+                    ).format(code)
                     send_message(phone_no, reply)
                     history.append({"role": "assistant", "content": reply})
                     return "OK", 200

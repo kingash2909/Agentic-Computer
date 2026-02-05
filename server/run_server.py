@@ -38,50 +38,120 @@ CONVERSATIONS = {}
 # HTML for Dashboard
 DASHBOARD_HTML = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Nexus Control Center</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Unified Control Center</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-        .status-card { background: #e8f4fd; border-left: 5px solid #3498db; padding: 15px; margin-top: 20px; border-radius: 4px; }
-        .instructions { background: #fff3e0; border-left: 5px solid #ff9800; padding: 15px; margin-top: 20px; border-radius: 4px; }
-        code { background: #eee; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 10px; }
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --danger: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --card-bg: #ffffff;
+        }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        header { background: var(--dark); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-3px); }
+        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-outline { background: transparent; border: 1px solid #ddd; color: #666; }
+        .btn-outline:hover { background: #f8f9fa; }
+        .device-info { margin: 1rem 0; border-top: 1px solid #eee; padding-top: 1rem; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem; }
+        .log-panel { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; height: 200px; overflow-y: auto; font-size: 12px; margin-top: 2rem; }
+        .instructions { background: #fff8e1; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 2rem; border-radius: 4px; }
+        code { background: #eee; padding: 2px 4px; border-radius: 2px; }
     </style>
 </head>
 <body>
+    <header>
+        <h2 style="margin:0">🤖 Nexus Unified</h2>
+        <div id="connection-status">
+            <span class="badge badge-success">Dashboard Connected</span>
+        </div>
+    </header>
+
     <div class="container">
-        <h1>🖥️ Nexus Control Center</h1>
-        
-        <div class="status-card">
-            <h3>Connected Devices: {{ devices_count }}</h3>
-            {% if devices %}
-                <ul>
-                {% for phone, sid in devices.items() %}
-                    <li>📱 <strong>{{ phone }}</strong> is connected (ID: <code>{{ sid[:8] }}...</code>)</li>
-                {% endfor %}
-                </ul>
-            {% else %}
-                <p>No devices currently connected.</p>
-            {% endif %}
+        <div class="instructions">
+            <strong>🚀 Remote Setup:</strong> Run <code>python agent/gui_app.py</code> on your laptop. 
+            Server URL: <code>{{ request.url_root }}</code>
         </div>
 
-        <div class="instructions">
-            <h3>🚀 How to Connect Your Laptop</h3>
-            <p>Render hosts the "Brain", but you must run the "Agent" locally on the laptop you want to control:</p>
-            <ol>
-                <li>Open a terminal on your <strong>laptop</strong>.</li>
-                <li>Navigate to the project folder.</li>
-                <li>Run <code>python agent/gui_app.py</code>.</li>
-                <li>Enter this Server URL: <code>{{ request.url_root }}</code></li>
-                <li>Send <strong>"Connect"</strong> to your WhatsApp bot to get a pairing code.</li>
-            </ol>
+        <div class="grid">
+            <div class="card">
+                <h3>🖥️ Active Connections ({{ devices_count }})</h3>
+                <div id="devices-list">
+                    {% if devices %}
+                        {% for phone, sid in devices.items() %}
+                        <div class="device-info">
+                            <div style="display:flex; justify-content:space-between; align-items:center">
+                                <strong>📱 {{ phone[-4:] }}...{{ phone[-2:] }}</strong>
+                                <span class="badge badge-success">Online</span>
+                            </div>
+                            <div class="controls">
+                                <button class="btn btn-primary" onclick="sendCommand('{{ phone }}', 'screenshot')">📸 Screenshot</button>
+                                <button class="btn btn-primary" onclick="sendCommand('{{ phone }}', 'battery')">🔋 Battery</button>
+                                <button class="btn btn-outline" onclick="sendCommand('{{ phone }}', 'lock')">🔒 Lock</button>
+                                <button class="btn btn-outline" onclick="sendCommand('{{ phone }}', 'info')">ℹ️ Info</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:#666; font-style:italic">No agents connected. Pair a device via WhatsApp to start.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>💬 Last Activity</h3>
+                <div id="activity-log" style="font-size:14px; color:#444">
+                    Waiting for events...
+                </div>
+            </div>
+        </div>
+
+        <div class="log-panel" id="debug-log">
+            [System] Dashboard initialized. Receiving live updates...
         </div>
     </div>
+
+    <script>
+        const socket = io();
+        
+        function sendCommand(phone, cmd) {
+            log(`Triggering ${cmd} for ${phone}...`);
+            socket.emit('web_command', { phone: phone, command: cmd });
+        }
+
+        function log(msg) {
+            const panel = document.getElementById('debug-log');
+            const time = new Date().toLocaleTimeString();
+            panel.innerHTML += `\\n[${time}] ${msg}`;
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        socket.on('log_update', (data) => {
+            log(data.message);
+            if (data.type === 'activity') {
+                document.getElementById('activity-log').innerText = data.message;
+            }
+        });
+
+        socket.on('command_result_web', (data) => {
+            log(`Result: ${data.output}`);
+        });
+    </script>
 </body>
 </html>
 """
@@ -147,7 +217,28 @@ def handle_register(data):
         send_message(found_phone, welcome_msg)
     else:
         print(f"❌ Invalid pairing code: {code}")
+        socketio.emit('log_update', {'message': f'❌ Failed pairing attempt with code {code}', 'type': 'system'})
         emit('registration_failed', {'reason': 'Invalid code'})
+
+@socketio.on('web_command')
+def handle_web_command(data):
+    """Bridge command from browser dashboard to agent"""
+    phone = data.get('phone')
+    command = data.get('command')
+    
+    if phone in DEVICES:
+        target_sid = DEVICES[phone]
+        # Wrap into an intent-like object
+        intent = {
+            'action': 'system' if command in ['screenshot', 'battery', 'lock', 'info'] else 'unknown',
+            'command': command,
+            'params': {}
+        }
+        print(f"🌐 Web Dashboard triggering: {command} for {phone}")
+        socketio.emit('execute_command', intent, room=target_sid)
+        socketio.emit('log_update', {'message': f'🌐 Web trigger: {command}', 'type': 'activity'})
+    else:
+        emit('log_update', {'message': f'❌ Error: Device {phone} not connected'})
 
 @socketio.on('command_result')
 def handle_result(data):
@@ -155,6 +246,9 @@ def handle_result(data):
     content = data.get('output')
     image_data = data.get('image_data') # Base64 encoded image
     sid = request.sid
+    
+    # Notify web dashboard
+    socketio.emit('command_result_web', {'output': content})
     
     if sid in SESSIONS:
         phone = SESSIONS[sid]
@@ -240,6 +334,9 @@ def webhook():
                 if "connect" in user_text.lower():
                     code = generate_pairing_code()
                     PAIRING_CODES[code] = phone_no
+                    print(f"🔑 Generated OTP {code} for {phone_no}")
+                    socketio.emit('log_update', {'message': f'🔑 OTP Generated for {phone_no}', 'type': 'system'})
+                    
                     reply = (
                         "🔗 *Connection Requested!*\n\n"
                         "To control this computer, follows these steps on your laptop:\n\n"
@@ -248,7 +345,12 @@ def webhook():
                         "3️⃣ Make sure the Server URL is set to your Render URL.\n\n"
                         "⌛ This code will expire soon."
                     ).format(code)
-                    send_message(phone_no, reply)
+                    
+                    success = send_message(phone_no, reply)
+                    if not success:
+                        print(f"‼️ FAILED to send WhatsApp response to {phone_no}")
+                        socketio.emit('log_update', {'message': f'‼️ WhatsApp Send Failure to {phone_no}', 'type': 'error'})
+                    
                     history.append({"role": "assistant", "content": reply})
                     return "OK", 200
                 

@@ -80,6 +80,7 @@ Your bot is now fully cross-platform (**macOS & Windows**) and supports complete
 - **Render.com**:
   1. New -> Web Service -> Connect GitHub Repo.
   2. Set "Start Command" to `gunicorn --worker-class eventlet -w 1 -b 0.0.0.0:$PORT server.run_server:app`.
+  **Note**: Do NOT include `web:` in the Render Start Command box.
 - **DigitalOcean / AWS / GCP**:
   1. Use the [Dockerfile](file:///Users/ashishmishra/Desktop/Building%20Projects/Agentic%20Computer%20/Dockerfile) to build and deploy a container.
 

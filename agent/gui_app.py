@@ -1,3 +1,8 @@
+try:
+    import eventlet
+    eventlet.monkey_patch()
+except ImportError:
+    pass
 
 import os
 import sys
@@ -124,8 +129,10 @@ def connect_api():
     t.daemon = True
     t.start()
     
-    # Wait a bit for status check
-    time.sleep(2)
+    # Wait longer for status check (Render can be slow)
+    for _ in range(10):
+        if client.sio.connected: break
+        time.sleep(1)
     
     if client.sio.connected:
         return jsonify({'status': 'ok'})

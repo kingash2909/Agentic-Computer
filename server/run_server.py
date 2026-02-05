@@ -222,16 +222,13 @@ def handle_disconnect():
         if phone in DEVICES:
             del DEVICES[phone]
 
-@socketio.on('register')
+@socketio.on('register_agent')
 def handle_register(data):
     """mobile/user sends 'connect', gets code. Agent sends code here."""
     code = data.get('code')
     sid = request.sid
     
-    # Find who owns this code
-    # We need a way to look up pairing codes.
-    # In this simple version, let's assume the pairing code is associated with a phone number
-    # stored in PAIRING_CODES when the user requested it via WhatsApp.
+    print(f"🔑 Received registration attempt with code: {code}")
     
     found_phone = None
     for c, p in PAIRING_CODES.items():
@@ -246,6 +243,7 @@ def handle_register(data):
         del PAIRING_CODES[code]
         
         emit('registration_success', {'status': 'ok'})
+        socketio.emit('log_update', {'message': f'✅ Agent {found_phone} paired successfully', 'type': 'system'})
         
         welcome_msg = (
             "🤖 *Welcome to Nexus Agent!* 🤖\n\n"
@@ -262,7 +260,7 @@ def handle_register(data):
         send_message(found_phone, welcome_msg)
     else:
         print(f"❌ Invalid pairing code: {code}")
-        socketio.emit('log_update', {'message': f'❌ Failed pairing attempt with code {code}', 'type': 'system'})
+        socketio.emit('log_update', {'message': f'❌ Invalid pairing attempt with code: {code}', 'type': 'error'})
         emit('registration_failed', {'reason': 'Invalid code'})
 
 @socketio.on('web_command')

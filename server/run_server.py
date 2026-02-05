@@ -90,7 +90,10 @@ DASHBOARD_HTML = """
 
         <div class="grid">
             <div class="card">
-                <h3>🖥️ Active Connections ({{ devices_count }})</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <h3>🖥️ Active Connections ({{ devices_count }})</h3>
+                    <button class="btn btn-outline" style="font-size:12px" onclick="simulateWhatsApp()">🧪 Simulate WhatsApp</button>
+                </div>
                 <div id="devices-list">
                     {% if devices %}
                         {% for phone, sid in devices.items() %}
@@ -129,12 +132,15 @@ DASHBOARD_HTML = """
     <script>
         const socket = io();
         
-        function sendCommand(phone, cmd) {
-            log(`Triggering ${cmd} for ${phone}...`);
-            socket.emit('web_command', { phone: phone, command: cmd });
+        function simulateWhatsApp() {
+            const num = prompt("Enter a dummy phone number (e.g. 12345):", "12345");
+            if (num) {
+                log(`Simulating 'Connect' command from ${num}...`);
+                socket.emit('simulate_whatsapp', { phone: num });
+            }
         }
 
-        function log(msg) {
+        socket.on('log_update', (data) => {
             const panel = document.getElementById('debug-log');
             const time = new Date().toLocaleTimeString();
             panel.innerHTML += `\\n[${time}] ${msg}`;
@@ -239,6 +245,20 @@ def handle_web_command(data):
         socketio.emit('log_update', {'message': f'🌐 Web trigger: {command}', 'type': 'activity'})
     else:
         emit('log_update', {'message': f'❌ Error: Device {phone} not connected'})
+
+@socketio.on('simulate_whatsapp')
+def handle_simulation(data):
+    """Simulate a WhatsApp 'connect' message for local testing"""
+    phone_no = data.get('phone', 'test_user')
+    print(f"🧪 Simulation: Received 'connect' from {phone_no}")
+    
+    code = generate_pairing_code()
+    PAIRING_CODES[code] = phone_no
+    
+    msg = f"🔑 Simulation: Code generated for {phone_no} is {code}. Enter this in your local agent."
+    print(msg)
+    socketio.emit('log_update', {'message': f'🔑 Local Test: OTP {code} generated for {phone_no}', 'type': 'system'})
+    # We don't call send_message here to avoid trying to hit Meta's API during simulation
 
 @socketio.on('command_result')
 def handle_result(data):

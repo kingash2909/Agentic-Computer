@@ -1,4 +1,6 @@
 flask
+flask-socketio
+gunicorn
 groq
 requests
 psutil

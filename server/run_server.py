@@ -36,126 +36,165 @@ SESSIONS = {}
 CONVERSATIONS = {}
 
 # HTML for Dashboard
+# HTML for Dashboard
 DASHBOARD_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Unified Control Center</title>
+    <title>Nexus Ultimate Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #3498db;
-            --secondary: #2ecc71;
-            --danger: #e74c3c;
-            --dark: #2c3e50;
-            --light: #ecf0f1;
-            --card-bg: #ffffff;
+            --primary: #22d3ee;
+            --primary-glow: rgba(34, 211, 238, 0.4);
+            --bg: #0f172a;
+            --surface: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f1f5f9;
         }
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
-        header { background: var(--dark); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .container { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-        .card { background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
-        .card:hover { transform: translateY(-3px); }
-        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 12px; font-weight: 600; }
-        .badge-success { background: #d1fae5; color: #065f46; }
-        .badge-warning { background: #fef3c7; color: #92400e; }
-        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: #2980b9; }
-        .btn-outline { background: transparent; border: 1px solid #ddd; color: #666; }
-        .btn-outline:hover { background: #f8f9fa; }
-        .device-info { margin: 1rem 0; border-top: 1px solid #eee; padding-top: 1rem; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem; }
-        .log-panel { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; height: 200px; overflow-y: auto; font-size: 12px; margin-top: 2rem; }
-        .instructions { background: #fff8e1; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 2rem; border-radius: 4px; }
-        code { background: #eee; padding: 2px 4px; border-radius: 2px; }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            font-family: 'Inter', sans-serif; 
+            background: radial-gradient(circle at top left, #1e293b, #0f172a); 
+            color: var(--text); 
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        nav { 
+            backdrop-filter: blur(10px); 
+            background: rgba(15, 23, 42, 0.8); 
+            border-bottom: 1px solid var(--border); 
+            padding: 1rem 2rem; 
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { font-weight: 700; font-size: 1.5rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 350px 1fr; gap: 2rem; }
+        .card { 
+            background: var(--surface); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid var(--border); 
+            border-radius: 20px; 
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .live-view-container { position: relative; width: 100%; aspect-ratio: 16/10; background: #000; border-radius: 12px; overflow: hidden; border: 2px solid var(--border); }
+        .live-view-img { width: 100%; height: 100%; object-fit: contain; }
+        .live-view-overlay { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 12px; }
+        .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-top: 1rem; }
+        .btn { 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--border); 
+            color: white; padding: 0.8rem; border-radius: 10px; cursor: pointer;
+            transition: all 0.2s; font-size: 0.9rem; font-weight: 600;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn:hover { background: var(--primary); color: #000; transform: translateY(-2px); box-shadow: 0 0 15px var(--primary-glow); }
+        .terminal { background: #000; border-radius: 12px; padding: 1rem; font-family: 'Fira Code', monospace; height: 250px; overflow-y: auto; font-size: 13px; border: 1px solid var(--border); }
+        .terminal-input-row { display: flex; gap: 10px; margin-top: 1rem; }
+        .terminal-input { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: var(--primary); padding: 8px 12px; border-radius: 6px; outline: none; }
     </style>
 </head>
 <body>
-    <header>
-        <h2 style="margin:0">🤖 Nexus Unified</h2>
-        <div id="connection-status">
-            <span class="badge badge-success">Dashboard Connected</span>
+    <nav>
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            NEXUS ULTIMATE
         </div>
-    </header>
+        <div id="connection-status"><span style="color:#10b981">● Backend Live</span></div>
+    </nav>
 
     <div class="container">
-        <div class="instructions">
-            <strong>🚀 Remote Setup:</strong> Run <code>python agent/gui_app.py</code> on your laptop. 
-            Server URL: <code>{{ request.url_root }}</code>
-        </div>
-
-        <div class="grid">
+        <div class="sidebar">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center">
-                    <h3>🖥️ Active Connections ({{ devices_count }})</h3>
-                    <button class="btn btn-outline" style="font-size:12px" onclick="simulateWhatsApp()">🧪 Simulate WhatsApp</button>
-                </div>
+                <h3 style="margin-top:0">📡 Connected</h3>
                 <div id="devices-list">
                     {% if devices %}
                         {% for phone, sid in devices.items() %}
-                        <div class="device-info">
-                            <div style="display:flex; justify-content:space-between; align-items:center">
-                                <strong>📱 {{ phone[-4:] }}...{{ phone[-2:] }}</strong>
-                                <span class="badge badge-success">Online</span>
-                            </div>
-                            <div class="controls">
-                                <button class="btn btn-primary" onclick="sendCommand('{{ phone }}', 'screenshot')">📸 Screenshot</button>
-                                <button class="btn btn-primary" onclick="sendCommand('{{ phone }}', 'battery')">🔋 Battery</button>
-                                <button class="btn btn-outline" onclick="sendCommand('{{ phone }}', 'lock')">🔒 Lock</button>
-                                <button class="btn btn-outline" onclick="sendCommand('{{ phone }}', 'info')">ℹ️ Info</button>
-                            </div>
+                        <div style="background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px; border:1px solid var(--border); margin-bottom:1rem">
+                            <strong>📱 {{ phone }}</strong>
                         </div>
                         {% endfor %}
                     {% else %}
-                        <p style="color:#666; font-style:italic">No agents connected. Pair a device via WhatsApp to start.</p>
+                        <p style="color:#64748b; font-style:italic">Waiting for agent...</p>
                     {% endif %}
                 </div>
+                <button class="btn" style="width:100%" onclick="simulateOTP()">🧪 Simulate OTP</button>
             </div>
-
-            <div class="card">
-                <h3>💬 Last Activity</h3>
-                <div id="activity-log" style="font-size:14px; color:#444">
-                    Waiting for events...
+                <h3 style="margin-top:0">🎮 Actions</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="sendCommand('screenshot')">📸 Snap</button>
+                    <button class="btn" onclick="sendStream('start')">📡 Go Live</button>
+                    <button class="btn" onclick="sendStream('stop')">⏹️ Stop Live</button>
+                    <button class="btn" onclick="sendCommand('battery')">🔋 Battery</button>
+                    <button class="btn" onclick="sendCommand('lock')">🔒 Lock</button>
+                    <button class="btn" onclick="sendCommand('info')">ℹ️ Info</button>
                 </div>
-            </div>
         </div>
 
-        <div class="log-panel" id="debug-log">
-            [System] Dashboard initialized. Receiving live updates...
+        <div class="main">
+            <div class="card" style="padding:0; overflow:hidden">
+                <div class="live-view-container">
+                    <img id="live-screen" class="live-view-img" src="" onerror="this.src='https://via.placeholder.com/800x500?text=Waiting+for+Live+Stream...'">
+                    <div class="live-view-overlay">LIVE STREAM • <span id="fps">0.0</span> FPS</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>📟 Activity Log</h3>
+                <div class="terminal" id="web-log"></div>
+                <div class="terminal-input-row">
+                    <input type="text" id="shell-cmd" class="terminal-input" placeholder="Execute shell command...">
+                    <button class="btn" onclick="executeShell()">Run</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const socket = io();
-        
-        function simulateWhatsApp() {
-            const num = prompt("Enter a dummy phone number (e.g. 12345):", "12345");
-            if (num) {
-                log(`Simulating 'Connect' command from ${num}...`);
-                socket.emit('simulate_whatsapp', { phone: num });
-            }
-        }
+        let lastTime = Date.now();
 
-        socket.on('log_update', (data) => {
-            const panel = document.getElementById('debug-log');
-            const time = new Date().toLocaleTimeString();
-            panel.innerHTML += `\\n[${time}] ${msg}`;
+        function log(msg, color='#d4d4d4') {
+            const panel = document.getElementById('web-log');
+            panel.innerHTML += `<div>[${new Date().toLocaleTimeString()}] <span style="color:${color}">${msg}</span></div>`;
             panel.scrollTop = panel.scrollHeight;
         }
 
-        socket.on('log_update', (data) => {
-            log(data.message);
-            if (data.type === 'activity') {
-                document.getElementById('activity-log').innerText = data.message;
-            }
-        });
+        function sendCommand(cmd) {
+            log(`Triggering ${cmd}...`, '#22d3ee');
+            socket.emit('web_command', { command: cmd });
+        }
 
+        function sendStream(type) {
+            log(`${type === 'start' ? 'Starting' : 'Stopping'} Live Stream...`, '#22d3ee');
+            socket.emit('web_command', { command: type === 'start' ? 'start_live_view' : 'stop_live_view', action: 'stream' });
+        }
+
+        function executeShell() {
+            const cmd = document.getElementById('shell-cmd').value;
+            if (!cmd) return;
+            socket.emit('web_command', { command: 'execute', action: 'shell', params: { command: cmd } });
+            document.getElementById('shell-cmd').value = '';
+        }
+
+        function simulateOTP() {
+            const num = prompt("Phone number:", "12345");
+            if (num) socket.emit('simulate_whatsapp', { phone: num });
+        }
+
+        socket.on('log_update', (data) => log(data.message));
         socket.on('command_result_web', (data) => {
-            log(`Result: ${data.output}`);
+            if (data.image_data) {
+                document.getElementById('live-screen').src = "data:image/png;base64," + data.image_data;
+                const now = Date.now();
+                document.getElementById('fps').innerText = (1000/(now - lastTime)).toFixed(1);
+                lastTime = now;
+            }
+            if (data.output) log(data.output, '#f1f5f9');
         });
     </script>
 </body>
@@ -231,20 +270,33 @@ def handle_web_command(data):
     """Bridge command from browser dashboard to agent"""
     phone = data.get('phone')
     command = data.get('command')
+    action = data.get('action', 'system')
+    params = data.get('params', {})
     
     if phone in DEVICES:
         target_sid = DEVICES[phone]
+        
+        # Stream commands (special handling)
+        if action == 'stream':
+            socketio.emit(command, {}, room=target_sid)
+            return
+
         # Wrap into an intent-like object
         intent = {
-            'action': 'system' if command in ['screenshot', 'battery', 'lock', 'info'] else 'unknown',
+            'action': action,
             'command': command,
-            'params': {}
+            'params': params
         }
         print(f"🌐 Web Dashboard triggering: {command} for {phone}")
         socketio.emit('execute_command', intent, room=target_sid)
         socketio.emit('log_update', {'message': f'🌐 Web trigger: {command}', 'type': 'activity'})
     else:
-        emit('log_update', {'message': f'❌ Error: Device {phone} not connected'})
+        # If no phone specified but one exists, use the first one
+        if not phone and DEVICES:
+            phone = list(DEVICES.keys())[0]
+            handle_web_command({'phone': phone, 'command': command, 'action': action, 'params': params})
+        else:
+            emit('log_update', {'message': f'❌ Error: Device not connected'})
 
 @socketio.on('simulate_whatsapp')
 def handle_simulation(data):
@@ -268,7 +320,7 @@ def handle_result(data):
     sid = request.sid
     
     # Notify web dashboard
-    socketio.emit('command_result_web', {'output': content})
+    socketio.emit('command_result_web', {'output': content, 'image_data': image_data})
     
     if sid in SESSIONS:
         phone = SESSIONS[sid]
@@ -403,7 +455,7 @@ def webhook():
 
 @app.route('/')
 def home():
-    return render_template_string(DASHBOARD_HTML, devices=DEVICES, devices_count=len(DEVICES))
+    return render_template_string(DASHBOARD_HTML, devices=DEVICES, devices_count=len(DEVICES), list=list)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5002))

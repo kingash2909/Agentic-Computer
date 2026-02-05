@@ -1,144 +1,146 @@
 
-import customtkinter as ctk
-import threading
-import sys
 import os
+import sys
+import threading
+import webbrowser
+import time
+from flask import Flask, render_template_string, request, jsonify
 
 # Add parent to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from agent.run_agent import AgentClient
 
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
+app = Flask(__name__)
 
-class AgentGUI(ctk.CTk):
-    def __init__(self):
-        super().__init__()
+# Config Path
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".server_url")
 
-        self.title("Nexus Agent")
-        self.geometry("600x500")
-        
-        # Grid layout
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
-
-        # Config Path
-        self.config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".server_url")
-
-        # Header
-        self.header_frame = ctk.CTkFrame(self)
-        self.header_frame.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
-        
-        self.title_label = ctk.CTkLabel(self.header_frame, text="🤖 Nexus Agent", font=ctk.CTkFont(size=20, weight="bold"))
-        self.title_label.pack(pady=10)
-        
-        self.status_label = ctk.CTkLabel(self.header_frame, text="Status: Disconnected", text_color="red")
-        self.status_label.pack(pady=(0, 10))
-
-        # Connection Frame
-        self.connect_frame = ctk.CTkFrame(self)
-        self.connect_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
-        
-        self.url_label = ctk.CTkLabel(self.connect_frame, text="Server URL:")
-        self.url_label.grid(row=0, column=0, padx=10, pady=10)
-        
-        self.url_entry = ctk.CTkEntry(self.connect_frame, width=250)
-        self.url_entry.grid(row=0, column=1, padx=10, pady=10)
-        self.url_entry.insert(0, self.load_server_url())
-        
-        self.code_label = ctk.CTkLabel(self.connect_frame, text="Pairing Code:")
-        self.code_label.grid(row=1, column=0, padx=10, pady=10)
-        
-        self.code_entry = ctk.CTkEntry(self.connect_frame, width=100)
-        self.code_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w")
-        
-        self.connect_btn = ctk.CTkButton(self.connect_frame, text="Connect", command=self.start_connection)
-        self.connect_btn.grid(row=2, column=0, columnspan=2, padx=10, pady=20)
-
-        # Instructions Frame
-        self.instr_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.instr_frame.grid(row=2, column=0, padx=20, pady=5, sticky="ew")
-        
-        self.instr_label = ctk.CTkLabel(
-            self.instr_frame, 
-            text="💡 Note: Enter your Render URL above (e.g. https://your-app.onrender.com)\nThen enter the code from WhatsApp.",
-            font=ctk.CTkFont(size=11),
-            text_color="gray"
-        )
-        self.instr_label.pack()
-
-        # Log Frame
-        self.log_textbox = ctk.CTkTextbox(self, width=500, height=200)
-        self.log_textbox.grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
-        self.log_textbox.insert("0.0", "--- Logs will appear here ---\n")
-        self.log_textbox.configure(state="disabled")
-
-        # Client Logic
-        self.client = None
-        
-    def log(self, message):
-        self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", f"{message}\n")
-        self.log_textbox.see("end")
-        self.log_textbox.configure(state="disabled")
-
-    def load_server_url(self):
-        if os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, "r") as f:
-                    return f.read().strip()
-            except: pass
-        return "http://localhost:5002"
-
-    def save_server_url(self, url):
+def get_server_url():
+    if os.path.exists(CONFIG_PATH):
         try:
-            with open(self.config_path, "w") as f:
-                f.write(url)
+            with open(CONFIG_PATH, "r") as f: return f.read().strip()
         except: pass
+    return "http://localhost:5002"
 
-    def update_status(self, status):
-        if status == "connected":
-            self.status_label.configure(text="Status: Connected", text_color="orange") # Socket connected, waiting for pair
-        elif status == "paired":
-            self.status_label.configure(text="Status: Paired & Online", text_color="green")
-            self.connect_btn.configure(state="disabled", text="Connected")
-        elif status == "disconnected":
-            self.status_label.configure(text="Status: Disconnected", text_color="red")
-            self.connect_btn.configure(state="normal", text="Connect")
+def save_server_url(url):
+    with open(CONFIG_PATH, "w") as f: f.write(url)
 
-    def start_connection(self):
-        url = self.url_entry.get()
-        code = self.code_entry.get()
+AGENT_HUB_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Agent Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .hub-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); padding: 2.5rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); width: 450px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .logo { font-size: 2rem; margin-bottom: 1.5rem; display: block; }
+        h2 { margin-bottom: 0.5rem; }
+        p { color: #94a3b8; margin-bottom: 2rem; font-size: 0.9rem; }
+        input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: white; margin-bottom: 1rem; outline: none; transition: border 0.2s; }
+        input:focus { border-color: #22d3ee; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: #22d3ee; color: #083344; font-weight: 700; cursor: pointer; transition: transform 0.2s, background 0.2s; }
+        .btn:hover { background: #67e8f9; transform: translateY(-2px); }
+        #status { margin-top: 1.5rem; padding: 10px; border-radius: 8px; font-size: 0.85rem; display: none; }
+        .paired { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    </style>
+</head>
+<body>
+    <div class="hub-card">
+        <span class="logo">🤖</span>
+        <h2>Nexus Agent Hub</h2>
+        <p>Your computer's remote interface.</p>
         
-        if not code:
-            self.log("⚠️ Please enter a pairing code.")
-            return
-
-        self.save_server_url(url)
-        self.connect_btn.configure(state="disabled", text="Connecting...")
+        <input type="text" id="server_url" placeholder="Server URL (e.g. https://xyz.render.com)" value="{{ server_url }}">
+        <input type="text" id="pair_code" placeholder="Enter Pairing Code from WhatsApp">
         
-        # Initialize Client
-        if self.client:
-            self.client.disconnect()
+        <button class="btn" onclick="connectAgent()">Launch & Connect</button>
+        
+        <div id="status"></div>
+        
+        <div style="margin-top:2rem; font-size:12px; color:#475569">
+            After connecting, you can control this laptop from the <a href="{{ server_url }}" target="_blank" style="color:#22d3ee">Main Dashboard</a>.
+        </div>
+    </div>
+
+    <script>
+        function connectAgent() {
+            const url = document.getElementById('server_url').value;
+            const code = document.getElementById('pair_code').value;
+            const status = document.getElementById('status');
             
-        self.client = AgentClient(
-            server_url=url,
-            on_log=self.log,
-            on_status_change=self.update_status
-        )
-        
-        # Run in thread to not block UI
-        t = threading.Thread(target=self.client.connect, args=(code,))
-        t.daemon = True
-        t.start()
-        
-    def on_closing(self):
-        if self.client:
-            self.client.disconnect()
-        self.destroy()
+            if(!code) return alert("Please enter a pairing code!");
+            
+            status.style.display = 'block';
+            status.innerText = "🔄 Connecting to " + url + "...";
+            status.className = '';
+
+            fetch('/api/connect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url, code})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'ok') {
+                    status.innerText = "🎉 Agent successfully paired and online!";
+                    status.classList.add('paired');
+                    setTimeout(() => window.open(url, '_blank'), 2000);
+                } else {
+                    status.innerText = "❌ Error: " + data.message;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+
+client = None
+
+@app.route('/')
+def index():
+    return render_template_string(AGENT_HUB_HTML, server_url=get_server_url())
+
+@app.route('/api/connect', methods=['POST'])
+def connect_api():
+    global client
+    data = request.json
+    url = data.get('url')
+    code = data.get('code')
+    
+    save_server_url(url)
+    
+    if client: client.disconnect()
+    
+    # Initialize real agent client
+    # Since we're in a separate route, we should handle logs via printing or queue
+    client = AgentClient(server_url=url)
+    
+    # Start connection in thread
+    t = threading.Thread(target=client.connect, args=(code,))
+    t.daemon = True
+    t.start()
+    
+    # Wait a bit for status check
+    time.sleep(2)
+    
+    if client.sio.connected:
+        return jsonify({'status': 'ok'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Failed to connect. Check URL and Code.'})
+
+def run_flask():
+    app.run(port=5003, debug=False, use_reloader=False)
 
 if __name__ == "__main__":
-    app = AgentGUI()
-    app.protocol("WM_DELETE_WINDOW", app.on_closing)
-    app.mainloop()
+    print("🚀 Starting Nexus Agent Hub UI on http://localhost:5003")
+    threading.Thread(target=run_flask, daemon=True).start()
+    time.sleep(1)
+    webbrowser.open("http://localhost:5003")
+    
+    # Keep main thread alive
+    while True:
+        time.sleep(1)

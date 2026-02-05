@@ -22,6 +22,7 @@ class AgentClient:
         self.on_log = on_log if on_log else print
         self.on_status_change = on_status_change
         self.pairing_code = None
+        self.live_stream_active = False
         
         # Register events
         self.sio.on('connect', self._on_connect)
@@ -30,6 +31,8 @@ class AgentClient:
         self.sio.on('registration_success', self._on_registration_success)
         self.sio.on('registration_failed', self._on_registration_failed)
         self.sio.on('execute_command', self._on_execute_command)
+        self.sio.on('start_live_view', self._start_live_view)
+        self.sio.on('stop_live_view', self._stop_live_view)
 
     def connect(self, code):
         """Connect to server with pairing code"""
@@ -76,6 +79,27 @@ class AgentClient:
     def _on_registration_failed(self, data):
         self.log(f"❌ Pairing failed: {data.get('reason')}")
         self.disconnect()
+
+    def _start_live_view(self, data):
+        if not self.live_stream_active:
+            self.live_stream_active = True
+            threading.Thread(target=self._live_view_loop, daemon=True).start()
+            self.log("📡 Live Stream Started")
+
+    def _stop_live_view(self, data):
+        self.live_stream_active = False
+        self.log("📡 Live Stream Stopped")
+
+    def _live_view_loop(self):
+        while self.live_stream_active and self.sio.connected:
+            try:
+                path = file_controller.take_screenshot()
+                if path and not path.startswith("❌"):
+                    with open(path, "rb") as f:
+                        encoded = base64.b64encode(f.read()).decode('utf-8')
+                        self.sio.emit('command_result', {'image_data': encoded})
+                time.sleep(1) # 1 FPS for efficiency
+            except: break
 
     def _on_execute_command(self, intent):
         """Receive command from server and execute it"""

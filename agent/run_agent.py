@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 import sys
 import os
 import socketio
@@ -40,15 +37,8 @@ class AgentClient:
         self.log(f"🔄 Connecting to {self.server_url}...")
         try:
             self.sio.connect(self.server_url)
-            # Register is handled in _on_connect or explicitly here if needed. 
-            # But usually we wait for connect event.
-            # However, socketio client connect is blocking until connected or error,
-            # so we can emit right after.
-            self.sio.emit('register', {'code': code})
-            
-            # Start a background thread to wait if running in CLI mode, 
-            # but for GUI we don't want to block.
-            # self.sio.wait() 
+            # Register with the correct event name
+            self.sio.emit('register_agent', {'code': code})
         except Exception as e:
             self.log(f"❌ Connection error: {e}")
             if self.on_status_change: self.on_status_change("disconnected")

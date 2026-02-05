@@ -1,8 +1,3 @@
-try:
-    import eventlet
-    eventlet.monkey_patch()
-except ImportError:
-    pass
 
 import os
 import sys
@@ -113,8 +108,8 @@ def index():
 def connect_api():
     global client
     data = request.json
-    url = data.get('url')
-    code = data.get('code')
+    url = data.get('url', '').strip().rstrip('/')
+    code = data.get('code', '').strip()
     
     save_server_url(url)
     
